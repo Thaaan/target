@@ -1,5 +1,5 @@
-# resources (contains proxies/credentials)
-resources/
+resources/*
+!resources/.gitkeep
 
 # virtual environment
 venv/
