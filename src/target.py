@@ -37,11 +37,8 @@ def main():
     # get number of accounts to create
     num_accounts = int(input("# of accounts to create: "))
     
-    # option to set other's catchall
-    catchall = input("Enter catchall domain: ")
-    if catchall:
-        global CATCHALL
-        CATCHALL = catchall
+    # flag to generate accounts
+    generate = input("Generate accounts (y) or give profiles (n)? ").lower() == "y"
         
     # get proxies
     proxies = load_proxies()
@@ -57,6 +54,13 @@ def main():
         for i in range(num_accounts):
              # get profile information
             profile = create_random_profile()
+            
+            if not generate:
+                print(f"{profile['first']}:{profile['last']}:{profile['email']}:{profile['password']}:{profile['birthday']}")
+                
+                with open(f"resources/{CATCHALL}_target.txt", "a") as f:
+                    f.write(f"{profile['email']}:{profile['password']}\n")
+                continue
 
             # get next proxy from cycle
             proxy = next(proxy_cycle) if proxy_cycle else None
@@ -107,7 +111,7 @@ def main():
             wait_for_load(page)
             context.close()
             
-            print(f"{i}/{num_accounts} - Created account: {profile['email']}:{profile['password']}")
+            print(f"{i + 1}/{num_accounts} - Created account: {profile['email']}:{profile['password']}")
             
         browser.close()
 
@@ -128,15 +132,23 @@ def pause():
     while True:
         time.sleep(1)
         
-def get_random_user():
-    response = requests.get("https://randomuser.me/api/?nat=us")
-    data = response.json()
-    result = data["results"][0]
-    first = result["name"]["first"]
-    last = result["name"]["last"]
-    dob = result["dob"]["date"]  # e.g. "1990-07-23T00:00:00.000Z"
-    birthday = format_birthday(dob)
-    return first, last, birthday
+def get_random_user(retries=3, delay=2):
+    for attempt in range(retries):
+        try:
+            response = requests.get("https://randomuser.me/api/?nat=us", timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            result = data["results"][0]
+            first = result["name"]["first"]
+            last = result["name"]["last"]
+            dob = result["dob"]["date"]
+            birthday = format_birthday(dob)
+            return first, last, birthday
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(delay)
+    
+    raise Exception("Failed to fetch random user after all retries")
 
 def format_birthday(dob: str) -> str:
     from datetime import datetime
@@ -144,19 +156,19 @@ def format_birthday(dob: str) -> str:
     return dt.strftime("%m/%d")  # e.g. "07/23"
 
 def create_random_email(first, last):
-    random_string = ''.join(random.choices(string.digits, k=5))
-    email = f"{first.lower()}_{last.lower()}_{random_string}@{CATCHALL}"
+    random_string = ''.join(random.choices(string.digits, k=2))
+    email = f"{first.lower()}_{last.lower()}{random_string}@{CATCHALL}"
     return email
 
 def create_random_password():
-    characters = string.ascii_letters + string.digits + string.punctuation.replace('<', '').replace('>', '')
+    characters = string.ascii_letters + string.digits + "!@#$%^&*()"
     password = ''.join(random.choices(characters, k=12))
     return password
 
 def create_random_profile():
     first, last, birthday = get_random_user()
     email = create_random_email(first, last)
-    password = create_random_password()
+    password = "8989Bolor"
     return {
         "first": first,
         "last": last,
