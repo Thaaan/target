@@ -3,7 +3,7 @@ from playwright_stealth import Stealth
 import time
 import random
 import string
-import requests
+from faker import Faker
 from itertools import cycle
 
 CATCHALL = "thaanmail.com"
@@ -124,7 +124,7 @@ def human_type(page, selector: str, text: str):
         time.sleep(random.uniform(0.05, 0.15))
         
 def wait_for_load(page):
-    page.wait_for_load_state("networkidle")
+    # page.wait_for_load_state("networkidle")
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_load_state("load")
     
@@ -132,28 +132,13 @@ def pause():
     while True:
         time.sleep(1)
         
-def get_random_user(retries=3, delay=2):
-    for attempt in range(retries):
-        try:
-            response = requests.get("https://randomuser.me/api/?nat=us", timeout=5)
-            response.raise_for_status()
-            data = response.json()
-            result = data["results"][0]
-            first = result["name"]["first"]
-            last = result["name"]["last"]
-            dob = result["dob"]["date"]
-            birthday = format_birthday(dob)
-            return first, last, birthday
-        except Exception as e:
-            if attempt < retries - 1:
-                time.sleep(delay)
-    
-    raise Exception("Failed to fetch random user after all retries")
+def get_random_user():
+    fake = Faker("en_US")
 
-def format_birthday(dob: str) -> str:
-    from datetime import datetime
-    dt = datetime.fromisoformat(dob.replace("Z", "+00:00"))
-    return dt.strftime("%m/%d")  # e.g. "07/23"
+    first = fake.first_name()
+    last = fake.last_name()
+    birthday = fake.date_of_birth(minimum_age=18, maximum_age=80).strftime("%m/%d")
+    return first, last, birthday
 
 def create_random_email(first, last):
     random_string = ''.join(random.choices(string.digits, k=2))
